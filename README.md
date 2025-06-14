@@ -1,7 +1,7 @@
 # TrollAMSIdotnet
 TrollAMSI only bypasses powershell's amsi and not the CLR amsi during Assembly.Load(). Was looking for a troll way to do this but seems like already done in the most epic way possible: https://github.com/G0ldenGunSec/SharpTransactedLoad. Read his blog for full details on his ingenious approach to bypassing amsi. G0ldenGunSec's implementation uses easyhook.dll for hooking which inturn requires cody fostura. Due to the proliferated use of both libraries in offensive security projects, they have been signaturized. Decided to re-write the hooking aspect to make it opsec safer. Ended up just copy pasting code to create a single .cs file for convenience. 
 
-**Note:** Only .cs version released, you can just compile it to an assembly and load it (refer to trollAMSI) 
+**Note:** Only .cs version released, you can just compile it to an assembly and load it (refer to instructions below) 
 
 ## Why is this technique so powerful? (i.e works on many powerful AV/EDR)
 Because even if you bypass amsi, when you do any sort of assembly.load, the byte array is scanned during virtualalloc, etc by the AV/EDR. This spoofs a byte array to appear on disk and the AV/EDR will not re-scan the byte array due to unnecessary overhead, since it is already assumed to be scanned when on disk. 
