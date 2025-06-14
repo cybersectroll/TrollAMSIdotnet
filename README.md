@@ -7,7 +7,6 @@ TrollAMSI only bypasses powershell's amsi and not the CLR amsi during Assembly.L
 Because even if you bypass amsi, when you any sort of assembly.load, the byte array is scanned during virtualalloc, etc by the AV/EDR. This spoofs a byte array to appear on disk and the AV/EDR will not re-scan the byte array due to unnecessary overhead, since it is already assumed to be scanned when on disk. 
 
 ![Image](https://github.com/user-attachments/assets/c893ef11-20a5-455a-a62c-1d6a717884fe)
-
 ## Usage 
 ```
 #First download TrollAmsiDOTNET.cs and dog.png (taken from flangvik/SharpCollection nightly build, you can sha1 the bytes before loading to check)
